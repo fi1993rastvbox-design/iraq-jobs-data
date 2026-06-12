@@ -52,11 +52,23 @@ def get_logo_for_title(title):
             
     # محاولة جلب شعار من جوجل (عبر DuckDuckGo)
     try:
-        # استخراج أول 4 كلمات من العنوان للبحث عنها
-        words = title.split()
-        short_title = ' '.join(words[:4]) if len(words) >= 4 else title
-        search_query = f"شعار {short_title} العراق"
+        # استخراج اسم الجهة بذكاء للبحث عن شعارها
+        entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد']
+        search_query = None
         
+        words = title.split()
+        for i, word in enumerate(words):
+            if word in entity_keywords:
+                # أخذ الكلمة المفتاحية مع الكلمتين التي تليها (مثال: جامعة مدينة العلم)
+                entity_name = ' '.join(words[i:i+3])
+                search_query = f"شعار {entity_name} العراق"
+                break
+                
+        # إذا لم نجد كلمة مفتاحية، نستخدم أول 4 كلمات
+        if not search_query:
+            short_title = ' '.join(words[:4]) if len(words) >= 4 else title
+            search_query = f"شعار {short_title} العراق"
+            
         with DDGS() as ddgs:
             results = [r for r in ddgs.images(search_query, max_results=1)]
             if results and 'image' in results[0]:
