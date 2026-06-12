@@ -1,0 +1,36 @@
+name: Iraq Jobs Scraper
+
+on:
+  schedule:
+    # يعمل كل 3 ساعات تلقائياً
+    - cron: '0 */3 * * *'
+  workflow_dispatch: # زر للتشغيل اليدوي وقتما تشاء
+
+jobs:
+  scrape-and-pull-request:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          pip install -r requirements.txt
+
+      - name: Run Scraper Script
+        run: |
+          python fetch_jobs.py
+
+      - name: Create Pull Request for Review
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: "تحديث الوظائف التلقائي: تم جلب وتنظيف وظائف جديدة"
+          title: "🚀 مراجعة وظائف جديدة"
+          body: "السكريبت قام بجلب وظائف جديدة، نظفها من الروابط الإعلانية، وأرفق شعارات الوزارات. يرجى مراجعتها والموافقة عليها لتظهر في التطبيق."
+          branch: "review-new-jobs"
+          base: "main"
