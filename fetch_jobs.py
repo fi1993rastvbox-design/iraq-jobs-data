@@ -4,6 +4,8 @@ import re
 from bs4 import BeautifulSoup
 import uuid
 from datetime import datetime
+from duckduckgo_search import DDGS
+import time
 
 # رابط خلاصة RSS لموقع تعيينات العراق
 RSS_URL = 'https://www.t9iq.com/feeds/posts/default?alt=rss'
@@ -47,6 +49,21 @@ def get_logo_for_title(title):
     for keyword, logo_url in LOGOS_DICTIONARY.items():
         if keyword in title:
             return logo_url
+            
+    # محاولة جلب شعار من جوجل (عبر DuckDuckGo)
+    try:
+        # استخراج أول 4 كلمات من العنوان للبحث عنها
+        words = title.split()
+        short_title = ' '.join(words[:4]) if len(words) >= 4 else title
+        search_query = f"شعار {short_title} العراق"
+        
+        with DDGS() as ddgs:
+            results = [r for r in ddgs.images(search_query, max_results=1)]
+            if results and 'image' in results[0]:
+                time.sleep(1) # لتفادي الحظر
+                return results[0]['image']
+    except Exception as e:
+        print(f"فشل جلب الصورة لـ {title}: {e}")
     
     # صورة افتراضية للوظائف الأهلية (قطاع خاص)
     if 'الاهلية' in title or 'أهلية' in title or 'شركة' in title:
