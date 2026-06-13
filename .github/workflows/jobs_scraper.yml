@@ -23,10 +23,6 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Scraper Script
-        env:
-          TG_API_ID: ${{ secrets.TG_API_ID }}
-          TG_API_HASH: ${{ secrets.TG_API_HASH }}
-          TG_PHONE: ${{ secrets.TG_PHONE }}
         run: |
           python fetch_jobs.py
 
