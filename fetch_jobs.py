@@ -22,7 +22,14 @@ LOGOS_DICTIONARY = {
     'الاتصالات': 'https://upload.wikimedia.org/wikipedia/ar/thumb/6/6a/Iraqi_Ministry_of_Communications_logo.png/400px-Iraqi_Ministry_of_Communications_logo.png',
     'مجلس الخدمة': 'https://fpsc.gov.iq/wp-content/uploads/2021/04/logo.png',
     'الحشد الشعبي': 'https://upload.wikimedia.org/wikipedia/ar/thumb/8/8d/Popular_Mobilization_Forces_%28Iraq%29_logo.svg/400px-Popular_Mobilization_Forces_%28Iraq%29_logo.svg.png',
-    'مكافحة الارهاب': 'https://upload.wikimedia.org/wikipedia/ar/thumb/0/0c/Iraqi_Counter_Terrorism_Service_logo.png/400px-Iraqi_Counter_Terrorism_Service_logo.png'
+    'مكافحة الارهاب': 'https://upload.wikimedia.org/wikipedia/ar/thumb/0/0c/Iraqi_Counter_Terrorism_Service_logo.png/400px-Iraqi_Counter_Terrorism_Service_logo.png',
+    'امانة بغداد': 'https://upload.wikimedia.org/wikipedia/ar/thumb/0/0e/Amanat_Baghdad_logo.png/400px-Amanat_Baghdad_logo.png',
+    'وزارة العدل': 'https://upload.wikimedia.org/wikipedia/ar/thumb/e/e4/Iraqi_Ministry_of_Justice_logo.png/400px-Iraqi_Ministry_of_Justice_logo.png',
+    'جامعة بغداد': 'https://upload.wikimedia.org/wikipedia/ar/thumb/1/1a/University_of_Baghdad_logo.png/400px-University_of_Baghdad_logo.png',
+    'الجامعة المستنصرية': 'https://upload.wikimedia.org/wikipedia/ar/thumb/4/44/Mustansiriyah_University_logo.png/400px-Mustansiriyah_University_logo.png',
+    'الجامعة التكنولوجية': 'https://upload.wikimedia.org/wikipedia/ar/thumb/2/23/University_of_Technology%2C_Iraq_logo.png/400px-University_of_Technology%2C_Iraq_logo.png',
+    'جامعة البصرة': 'https://upload.wikimedia.org/wikipedia/ar/thumb/1/1a/University_of_Basrah_logo.png/400px-University_of_Basrah_logo.png',
+    'جامعة الموصل': 'https://upload.wikimedia.org/wikipedia/ar/thumb/2/25/University_of_Mosul_logo.png/400px-University_of_Mosul_logo.png'
 }
 
 # الجمل الإعلانية التي يجب مسحها تلقائياً من النص
@@ -77,11 +84,23 @@ def get_logo_for_title(title):
     except Exception as e:
         print(f"فشل جلب الصورة لـ {title}: {e}")
     
+    # إذا فشل جوجل، نستخدم أيقونات افتراضية مميزة ومخصصة حسب الكلمة المفتاحية
+    if 'جامعة' in title or 'كلية' in title or 'معهد' in title:
+        return 'https://cdn-icons-png.flaticon.com/512/8074/8074805.png' # أيقونة جامعة رائعة
+    if 'مستشفى' in title or 'صحة' in title or 'طبي' in title:
+        return 'https://cdn-icons-png.flaticon.com/512/4320/4320337.png' # أيقونة مستشفى
+    if 'مصرف' in title or 'بنك' in title:
+        return 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png' # أيقونة بنك
+    if 'مدرسة' in title or 'تدريس' in title:
+        return 'https://cdn-icons-png.flaticon.com/512/2436/2436855.png' # أيقونة مدرسة
+    if 'مطار' in title or 'طيران' in title:
+        return 'https://cdn-icons-png.flaticon.com/512/3163/3163155.png' # أيقونة طيران
+        
     # صورة افتراضية للوظائف الأهلية (قطاع خاص)
     if 'الاهلية' in title or 'أهلية' in title or 'شركة' in title:
         return 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png' # أيقونة شركة
     
-    # صورة افتراضية للوظائف الحكومية غير المعرفة بالقاموس
+    # صورة افتراضية للوظائف الحكومية العامة
     return 'https://cdn-icons-png.flaticon.com/512/8291/8291079.png' # أيقونة حكومة
 
 def clean_html_content(html_content):
