@@ -193,14 +193,25 @@ def fetch_and_parse_jobs():
     return jobs_list
 
 def main():
-    jobs = fetch_and_parse_jobs()
+    import os
+    from telegram_scraper import fetch_telegram_jobs
+    
+    # أولاً جلب وظائف الموقع (RSS)
+    rss_jobs = fetch_and_parse_jobs()
+    
+    # ثانياً جلب وظائف التليجرام مع تمرير الوظائف الحالية لتجنب التكرار
+    telegram_jobs = fetch_telegram_jobs(existing_jobs=rss_jobs)
+    
+    # دمج الوظائف
+    all_jobs = rss_jobs + telegram_jobs
     
     # حفظ الملف كـ JSON
     output_file = 'jobs.json'
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(jobs, f, ensure_ascii=False, indent=4)
+        json.dump(all_jobs, f, ensure_ascii=False, indent=4)
         
-    print(f"تم بنجاح جلب وتنظيف {len(jobs)} وظيفة وحفظها في {output_file}")
+    print(f"تم بنجاح جلب وتنظيف {len(rss_jobs)} من الموقع و {len(telegram_jobs)} من التليجرام.")
+    print(f"العدد الكلي للوظائف المحفوظة في {output_file} هو: {len(all_jobs)}")
 
 if __name__ == "__main__":
     main()
