@@ -2,8 +2,8 @@ name: Iraq Jobs Scraper
 
 on:
   schedule:
-    # يعمل كل 3 ساعات تلقائياً
-    - cron: '0 */3 * * *'
+    # يعمل كل 4 ساعات تلقائياً
+    - cron: '0 */4 * * *'
   workflow_dispatch: # زر للتشغيل اليدوي وقتما تشاء
 
 jobs:
@@ -23,6 +23,10 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Scraper Script
+        env:
+          TG_API_ID: ${{ secrets.TG_API_ID }}
+          TG_API_HASH: ${{ secrets.TG_API_HASH }}
+          TG_PHONE: ${{ secrets.TG_PHONE }}
         run: |
           python fetch_jobs.py
 
