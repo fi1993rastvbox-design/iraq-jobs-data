@@ -106,20 +106,36 @@ def get_logo_for_title(title):
 def clean_html_content(html_content):
     soup = BeautifulSoup(html_content, "html.parser")
     
+    # معالجة الروابط
+    for a in soup.find_all('a'):
+        text_a = a.get_text()
+        # مسح الروابط الإعلانية
+        if any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'هنا', 'قناتنا', 'يوزر', 'تابعنا']):
+            a.decompose()
+        else:
+            # الاحتفاظ بالروابط المهمة (مثل استمارات التقديم) وإظهارها كنص
+            href = a.get('href', '')
+            if href and 't9iq' not in href:
+                a.replace_with(f" {text_a} \n [الرابط: {href}] \n")
+            
     # استخراج النص الصافي
     text = soup.get_text(separator="\n").strip()
     
-    # تنظيف الروابط والكلمات الإعلانية باستخدام regex
+    # تنظيف الكلمات الإعلانية
     for spam in SPAM_PHRASES:
         text = re.sub(rf"{spam}.*", "", text, flags=re.IGNORECASE)
         text = text.replace(spam, "")
         
-    # إزالة الأسطر الفارغة الزائدة
-    lines = [line.strip() for line in text.split('\n') if line.strip()]
-    
-    # دمج الأسطر مع فواصل للحفاظ على الترتيب
-    cleaned_text = "\n".join(lines)
-    return cleaned_text
+    # تنظيف إضافي للأسطر العشوائية
+    lines = []
+    for line in text.split('\n'):
+        clean_line = line.strip()
+        # مسح الأسطر التي تحتوي فقط على نقاط أو رموز
+        if not clean_line or set(clean_line) <= set('. -_/') or 'قنواتنا' in clean_line or 'انتباه/' in clean_line or 'انتباه:' in clean_line:
+            continue
+        lines.append(clean_line)
+        
+    return "\n".join(lines)
 
 def fetch_and_parse_jobs():
     print("جاري جلب الوظائف من الـ RSS...")
