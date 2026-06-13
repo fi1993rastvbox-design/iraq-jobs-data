@@ -113,10 +113,15 @@ def clean_html_content(html_content):
         if any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'هنا', 'قناتنا', 'يوزر', 'تابعنا']):
             a.decompose()
         else:
-            # الاحتفاظ بالروابط المهمة (مثل استمارات التقديم) وإظهارها كنص
+            # الاحتفاظ بالروابط المهمة وإهمال روابط الصور
             href = a.get('href', '')
-            if href and 't9iq' not in href:
-                a.replace_with(f" {text_a} \n [الرابط: {href}] \n")
+            is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
+            
+            if href and 't9iq' not in href and not is_image_link:
+                link_text = text_a.strip() if text_a.strip() else "رابط"
+                a.replace_with(f" {link_text} \n [الرابط: {href}] \n")
+            else:
+                a.decompose()
             
     # استخراج النص الصافي
     text = soup.get_text(separator="\n").strip()
