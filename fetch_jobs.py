@@ -173,7 +173,7 @@ def fetch_and_parse_jobs():
         if pub_date_raw:
             pub_date = datetime(*pub_date_raw[:6]).strftime("%Y-%m-%d %H:%M")
         else:
-            pub_date = "اليوم"
+            pub_date = datetime.now().strftime("%Y-%m-%d %H:%M")
             
         category = entry.category if 'category' in entry else "الكل"
         
@@ -208,6 +208,9 @@ def main():
     
     # دمج الوظائف
     all_jobs = rss_jobs + telegram_jobs
+    
+    # ترتيب الوظائف تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
+    all_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
     
     # حفظ الملف كـ JSON
     output_file = 'jobs.json'
