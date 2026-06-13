@@ -117,7 +117,7 @@ def clean_html_content(html_content):
             href = a.get('href', '')
             is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
             
-            if href and 't9iq' not in href and not is_image_link:
+            if href and not is_image_link:
                 link_text = text_a.strip() if text_a.strip() else "رابط"
                 a.replace_with(f" {link_text} \n [الرابط: {href}] \n")
             else:
