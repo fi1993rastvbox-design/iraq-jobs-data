@@ -4,7 +4,10 @@ import re
 from bs4 import BeautifulSoup
 import uuid
 from datetime import datetime
-from duckduckgo_search import DDGS
+try:
+    from duckduckgo_search import DDGS
+except ImportError:
+    DDGS = None
 import time
 
 # رابط خلاصة RSS لموقع تعيينات العراق
@@ -58,31 +61,32 @@ def get_logo_for_title(title):
             return logo_url
             
     # محاولة جلب شعار من جوجل (عبر DuckDuckGo)
-    try:
-        # استخراج اسم الجهة بذكاء للبحث عن شعارها
-        entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد']
-        search_query = None
-        
-        words = title.split()
-        for i, word in enumerate(words):
-            if word in entity_keywords:
-                # أخذ الكلمة المفتاحية مع الكلمتين التي تليها (مثال: جامعة مدينة العلم)
-                entity_name = ' '.join(words[i:i+3])
-                search_query = f"شعار {entity_name} العراق"
-                break
-                
-        # إذا لم نجد كلمة مفتاحية، نستخدم أول 4 كلمات
-        if not search_query:
-            short_title = ' '.join(words[:4]) if len(words) >= 4 else title
-            search_query = f"شعار {short_title} العراق"
+    if DDGS is not None:
+        try:
+            # استخراج اسم الجهة بذكاء للبحث عن شعارها
+            entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد']
+            search_query = None
             
-        with DDGS() as ddgs:
-            results = [r for r in ddgs.images(search_query, max_results=1)]
-            if results and 'image' in results[0]:
-                time.sleep(1) # لتفادي الحظر
-                return results[0]['image']
-    except Exception as e:
-        print(f"فشل جلب الصورة لـ {title}: {e}")
+            words = title.split()
+            for i, word in enumerate(words):
+                if word in entity_keywords:
+                    # أخذ الكلمة المفتاحية مع الكلمتين التي تليها (مثال: جامعة مدينة العلم)
+                    entity_name = ' '.join(words[i:i+3])
+                    search_query = f"شعار {entity_name} العراق"
+                    break
+                    
+            # إذا لم نجد كلمة مفتاحية، نستخدم أول 4 كلمات
+            if not search_query:
+                short_title = ' '.join(words[:4]) if len(words) >= 4 else title
+                search_query = f"شعار {short_title} العراق"
+                
+            with DDGS() as ddgs:
+                results = [r for r in ddgs.images(search_query, max_results=1)]
+                if results and 'image' in results[0]:
+                    time.sleep(1) # لتفادي الحظر
+                    return results[0]['image']
+        except Exception as e:
+            print(f"فشل جلب الصورة لـ {title}: {e}")
     
     # إذا فشل جوجل، نستخدم أيقونات افتراضية مميزة ومخصصة حسب الكلمة المفتاحية
     if 'جامعة' in title or 'كلية' in title or 'معهد' in title:
