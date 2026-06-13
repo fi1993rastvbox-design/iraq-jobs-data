@@ -109,19 +109,27 @@ def clean_html_content(html_content):
     # معالجة الروابط
     for a in soup.find_all('a'):
         text_a = a.get_text()
-        # حذف روابط السوشيال ميديا فقط
-        if any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'قناتنا', 'يوزر', 'تابعنا']):
+        href = a.get('href', '')
+        
+        # الكشف عن روابط السوشيال ميديا والإعلانات من خلال النص أو الرابط
+        is_social_text = any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'قناتنا', 'يوزر', 'تابعنا', 'الرئيسية'])
+        is_social_url = any(domain in href.lower() for domain in ['facebook.com', 'instagram.com', 't.me', 'tiktok.com', 'linkedin.com', 'twitter.com', 'youtube.com', 'wa.me', 'bit.ly'])
+        is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
+        is_main_page = href.strip('/') in ['https://www.t9iq.com', 'http://www.t9iq.com', 'https://t9iq.com', 'http://t9iq.com']
+        
+        if is_social_text or is_social_url or is_image_link or is_main_page or not href:
             a.decompose()
         else:
-            # الاحتفاظ بالروابط المهمة وإهمال روابط الصور
-            href = a.get('href', '')
-            is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
-            
-            if href and not is_image_link:
-                link_text = text_a.strip() if text_a.strip() else "رابط"
-                a.replace_with(f" {link_text} \n [الرابط: {href}] \n")
-            else:
-                a.decompose()
+            link_text = text_a.strip() if text_a.strip() else "رابط"
+            a.replace_with(f" {link_text} \n [الرابط: {href}] \n")
+                
+    # معالجة النماذج المضمنة (iframes) مثل نماذج جوجل
+    for iframe in soup.find_all('iframe'):
+        src = iframe.get('src', '')
+        if src and ('docs.google.com/forms' in src or 'form' in src.lower()):
+            iframe.replace_with(f" استمارة التقديم (نموذج مضمن) \n [الرابط: {src}] \n")
+        else:
+            iframe.decompose()
             
     # استخراج النص الصافي
     text = soup.get_text(separator="\n").strip()
