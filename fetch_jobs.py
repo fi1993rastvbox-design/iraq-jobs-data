@@ -113,7 +113,7 @@ def clean_html_content(html_content):
         
         # الكشف عن روابط السوشيال ميديا والإعلانات من خلال النص أو الرابط
         is_social_text = any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'قناتنا', 'يوزر', 'تابعنا', 'الرئيسية'])
-        is_social_url = any(domain in href.lower() for domain in ['facebook.com', 'instagram.com', 't.me', 'tiktok.com', 'linkedin.com', 'twitter.com', 'youtube.com', 'wa.me', 'bit.ly'])
+        is_social_url = any(domain in href.lower() for domain in ['facebook.com', 'instagram.com', 't.me', 'tiktok.com', 'linkedin.com', 'twitter.com', 'youtube.com', 'wa.me', 'whatsapp.com', 'viber.com', 'bit.ly'])
         is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
         is_main_page = href.strip('/') in ['https://www.t9iq.com', 'http://www.t9iq.com', 'https://t9iq.com', 'http://t9iq.com']
         
