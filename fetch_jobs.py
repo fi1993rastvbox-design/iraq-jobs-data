@@ -130,8 +130,11 @@ def clean_html_content(html_content):
     lines = []
     for line in text.split('\n'):
         clean_line = line.strip()
-        # مسح الأسطر التي تحتوي فقط على نقاط أو رموز
-        if not clean_line or set(clean_line) <= set('. -_/') or 'قنواتنا' in clean_line or 'انتباه/' in clean_line or 'انتباه:' in clean_line:
+        # مسح الأسطر التي تحتوي فقط على نقاط أو رموز، أو بقايا الإعلانات المزعجة
+        if not clean_line or set(clean_line) <= set('. -_/') or 'قنواتنا' in clean_line or 'انتباه/' in clean_line or 'انتباه:' in clean_line or 'مثبتة في الاسفل' in clean_line or 'مثبتة في الأسفل' in clean_line:
+            continue
+        # مسح الكلمات الإعلانية المعزولة في سطر لوحدها
+        if clean_line in ['التليكرام', 'الواتساب', 'الفايبر', 'الانستغرام', 'أو في', 'او في', 'بالضغط هنا', 'اضغط هنا', 'يوزر التليكرام']:
             continue
         lines.append(clean_line)
         
