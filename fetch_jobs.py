@@ -198,27 +198,58 @@ def fetch_and_parse_jobs():
 
 def main():
     import os
-    from telegram_scraper import fetch_telegram_jobs
+    from telegram_scraper import fetch_telegram_jobs, is_duplicate
     
+    # تحميل الوظائف المنشورة حالياً (إذا وجد الملف) لتجنب التكرار
+    existing_active_jobs = []
+    if os.path.exists('jobs.json'):
+        try:
+            with open('jobs.json', 'r', encoding='utf-8') as f:
+                existing_active_jobs = json.load(f)
+        except Exception as e:
+            print(f"تنبيه: فشل قراءة jobs.json: {e}")
+            
+    # تحميل الوظائف المعلقة حالياً (إذا وجد الملف) لكي لا نحذفها
+    existing_pending_jobs = []
+    if os.path.exists('pending_jobs.json'):
+        try:
+            with open('pending_jobs.json', 'r', encoding='utf-8') as f:
+                existing_pending_jobs = json.load(f)
+        except Exception as e:
+            print(f"تنبيه: فشل قراءة pending_jobs.json: {e}")
+
     # أولاً جلب وظائف الموقع (RSS)
     rss_jobs = fetch_and_parse_jobs()
     
-    # ثانياً جلب وظائف التليجرام مع تمرير الوظائف الحالية لتجنب التكرار
+    # ثانياً جلب وظائف التليجرام
     telegram_jobs = fetch_telegram_jobs(existing_jobs=rss_jobs)
     
-    # دمج الوظائف
-    all_jobs = rss_jobs + telegram_jobs
+    # دمج الوظائف الجديدة المسحوبة
+    scraped_jobs = rss_jobs + telegram_jobs
     
-    # ترتيب الوظائف تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
-    all_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
+    # تصفية الوظائف الجديدة: نقبل فقط الوظائف التي ليست مكررة في jobs.json وليست مكررة في pending_jobs.json
+    new_filtered_jobs = []
+    for job in scraped_jobs:
+        # فحص إذا كانت مكررة في الوظائف المنشورة أو في المعلقة حالياً
+        if not is_duplicate(job['title'], job['description'], existing_active_jobs) and \
+           not is_duplicate(job['title'], job['description'], existing_pending_jobs) and \
+           not is_duplicate(job['title'], job['description'], new_filtered_jobs):
+            new_filtered_jobs.append(job)
+
+    # دمج الوظائف المعلقة القديمة مع الوظائف الجديدة المفلترة
+    updated_pending_jobs = existing_pending_jobs + new_filtered_jobs
     
-    # حفظ الملف كـ JSON
-    output_file = 'jobs.json'
+    # ترتيب الوظائف المعلقة تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
+    updated_pending_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
+    
+    # حفظ الملف كـ JSON في pending_jobs.json
+    output_file = 'pending_jobs.json'
     with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(all_jobs, f, ensure_ascii=False, indent=4)
+        json.dump(updated_pending_jobs, f, ensure_ascii=False, indent=4)
         
     print(f"تم بنجاح جلب وتنظيف {len(rss_jobs)} من الموقع و {len(telegram_jobs)} من التليجرام.")
-    print(f"العدد الكلي للوظائف المحفوظة في {output_file} هو: {len(all_jobs)}")
+    print(f"الوظائف الجديدة غير المكررة المضافة للمعلقات: {len(new_filtered_jobs)}")
+    print(f"العدد الكلي للوظائف المعلقة المحفوظة في {output_file} هو: {len(updated_pending_jobs)}")
 
 if __name__ == "__main__":
     main()
