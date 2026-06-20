@@ -7,8 +7,10 @@ on:
   workflow_dispatch: # زر للتشغيل اليدوي وقتما تشاء
 
 jobs:
-  scrape-and-pull-request:
+  scrape-and-push:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # صلاحية الكتابة للمستودع ودفع التغييرات
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -26,11 +28,10 @@ jobs:
         run: |
           python fetch_jobs.py
 
-      - name: Create Pull Request for Review
-        uses: peter-evans/create-pull-request@v5
-        with:
-          commit-message: "تحديث الوظائف التلقائي: تم جلب وتنظيف وظائف جديدة"
-          title: "🚀 مراجعة وظائف جديدة"
-          body: "السكريبت قام بجلب وظائف جديدة، نظفها من الروابط الإعلانية، وأرفق شعارات الوزارات. يرجى مراجعتها والموافقة عليها لتظهر في التطبيق."
-          branch: "review-new-jobs"
-          base: "main"
+      - name: Commit and Push changes
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add pending_jobs.json
+          git commit -m "🤖 Scraper: تحديث الوظائف المعلقة قيد المراجعة" || exit 0
+          git push origin main
