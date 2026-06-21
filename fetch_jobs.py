@@ -145,9 +145,8 @@ def get_logo_for_title(title):
     # صورة افتراضية للوظائف الأهلية (قطاع خاص)
     if 'الاهلية' in title or 'أهلية' in title or 'شركة' in title:
         return 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png'
-    
-    # صورة افتراضية للوظائف الحكومية العامة
-    return 'https://cdn-icons-png.flaticon.com/512/8291/8291079.png'
+    # الصورة الافتراضية للتطبيق
+    return 'https://i.ibb.co/qM1b00XS/dfdfd2c9e13b.png'
 
 def clean_html_content(html_content):
     soup = BeautifulSoup(html_content, "html.parser")
