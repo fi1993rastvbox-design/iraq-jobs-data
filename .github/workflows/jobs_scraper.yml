@@ -25,6 +25,9 @@ jobs:
           pip install -r requirements.txt
 
       - name: Run Scraper Script
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          SEARCH_ENGINE_ID: ${{ secrets.SEARCH_ENGINE_ID }}
         run: |
           python fetch_jobs.py
 
@@ -32,6 +35,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending_jobs.json
-          git commit -m "🤖 Scraper: تحديث الوظائف المعلقة قيد المراجعة" || exit 0
+          git add pending_jobs.json logos/
+          git commit -m "🤖 Scraper: تحديث الوظائف المعلقة وشعارات الشركات" || exit 0
           git push origin main
