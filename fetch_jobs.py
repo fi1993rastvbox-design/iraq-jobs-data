@@ -1,17 +1,27 @@
+import os
 import feedparser
 import json
 import re
 from bs4 import BeautifulSoup
 import uuid
 from datetime import datetime
-try:
-    from duckduckgo_search import DDGS
-except ImportError:
-    DDGS = None
 import time
+import requests
+
+# Get Google credentials from environment variables (GitHub Secrets)
+GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
+SEARCH_ENGINE_ID = os.environ.get("SEARCH_ENGINE_ID", "")
 
 # رابط خلاصة RSS لموقع تعيينات العراق
 RSS_URL = 'https://www.t9iq.com/feeds/posts/default?alt=rss'
+
+# مسار مجلد الشعارات
+LOGOS_DIR = "logos"
+if not os.path.exists(LOGOS_DIR):
+    os.makedirs(LOGOS_DIR)
+
+# رابط GitHub المباشر لتحميل الصور في التطبيق
+GITHUB_RAW_BASE = "https://raw.githubusercontent.com/fi1993rastvbox-design/iraq-jobs-data/main/logos"
 
 # قاموس الشعارات الذكي: يربط الكلمة المفتاحية في العنوان برابط صورة الشعار الرسمي
 LOGOS_DICTIONARY = {
@@ -54,58 +64,90 @@ SPAM_PHRASES = [
     "مع تمنياتنا بالتوفيق للجميع"
 ]
 
+def download_and_save_image(image_url):
+    try:
+        response = requests.get(image_url, timeout=10)
+        if response.status_code == 200:
+            ext = 'png' if 'png' in response.headers.get('Content-Type', '') else 'jpg'
+            filename = f"{uuid.uuid4().hex[:12]}.{ext}"
+            filepath = os.path.join(LOGOS_DIR, filename)
+            with open(filepath, 'wb') as f:
+                f.write(response.content)
+            # إرجاع رابط الجيت هاب المباشر لتلك الصورة
+            return f"{GITHUB_RAW_BASE}/{filename}"
+    except Exception as e:
+        print(f"فشل تحميل الصورة ({image_url}): {e}")
+    return None
+
 def get_logo_for_title(title):
-    # البحث في القاموس عن اسم الوزارة أو المؤسسة
+    # البحث في القاموس أولاً عن اسم الوزارة أو المؤسسة
     for keyword, logo_url in LOGOS_DICTIONARY.items():
         if keyword in title:
-            return logo_url
+            # نحاول تحميل شعار القاموس لكي يكون من رابطنا أيضاً (لتوحيد العملية وتجنب CORS)
+            # ولكن لتخفيف الضغط يمكن إرجاع الرابط المباشر، أو الأفضل تحميله.
+            saved_url = download_and_save_image(logo_url)
+            if saved_url: return saved_url
+            return logo_url # الاحتياط في حال فشل التحميل
             
-    # محاولة جلب شعار من جوجل (عبر DuckDuckGo)
-    if DDGS is not None:
+    # محاولة جلب شعار من Google Custom Search API
+    if GOOGLE_API_KEY and SEARCH_ENGINE_ID:
         try:
-            # استخراج اسم الجهة بذكاء للبحث عن شعارها
+            # استخراج اسم الجهة للبحث عن شعارها
             entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد']
             search_query = None
             
             words = title.split()
             for i, word in enumerate(words):
                 if word in entity_keywords:
-                    # أخذ الكلمة المفتاحية مع الكلمتين التي تليها (مثال: جامعة مدينة العلم)
                     entity_name = ' '.join(words[i:i+3])
                     search_query = f"شعار {entity_name} العراق"
                     break
                     
-            # إذا لم نجد كلمة مفتاحية، نستخدم أول 4 كلمات
             if not search_query:
                 short_title = ' '.join(words[:4]) if len(words) >= 4 else title
                 search_query = f"شعار {short_title} العراق"
                 
-            with DDGS() as ddgs:
-                results = [r for r in ddgs.images(search_query, max_results=1)]
-                if results and 'image' in results[0]:
-                    time.sleep(1) # لتفادي الحظر
-                    return results[0]['image']
+            # استدعاء API لجوجل
+            url = "https://www.googleapis.com/customsearch/v1"
+            params = {
+                'q': search_query,
+                'cx': SEARCH_ENGINE_ID,
+                'key': GOOGLE_API_KEY,
+                'searchType': 'image',
+                'num': 1
+            }
+            res = requests.get(url, params=params, timeout=10)
+            if res.status_code == 200:
+                data = res.json()
+                if 'items' in data and len(data['items']) > 0:
+                    item = data['items'][0]
+                    # نفضل الصورة المصغرة (Thumbnail) لأنها مستضافة في سيرفرات جوجل (تجنب الحظر)
+                    image_url = item.get('image', {}).get('thumbnailLink') or item.get('link')
+                    if image_url:
+                        saved_url = download_and_save_image(image_url)
+                        if saved_url:
+                            return saved_url
         except Exception as e:
-            print(f"فشل جلب الصورة لـ {title}: {e}")
+            print(f"فشل جلب الصورة من جوجل لـ {title}: {e}")
     
-    # إذا فشل جوجل، نستخدم أيقونات افتراضية مميزة ومخصصة حسب الكلمة المفتاحية
+    # إذا فشل جوجل أو لم يتم إعداد المفاتيح، نستخدم أيقونات افتراضية مميزة
     if 'جامعة' in title or 'كلية' in title or 'معهد' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/8074/8074805.png' # أيقونة جامعة رائعة
+        return 'https://cdn-icons-png.flaticon.com/512/8074/8074805.png'
     if 'مستشفى' in title or 'صحة' in title or 'طبي' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/4320/4320337.png' # أيقونة مستشفى
+        return 'https://cdn-icons-png.flaticon.com/512/4320/4320337.png'
     if 'مصرف' in title or 'بنك' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png' # أيقونة بنك
+        return 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png'
     if 'مدرسة' in title or 'تدريس' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2436/2436855.png' # أيقونة مدرسة
+        return 'https://cdn-icons-png.flaticon.com/512/2436/2436855.png'
     if 'مطار' in title or 'طيران' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/3163/3163155.png' # أيقونة طيران
+        return 'https://cdn-icons-png.flaticon.com/512/3163/3163155.png'
         
     # صورة افتراضية للوظائف الأهلية (قطاع خاص)
     if 'الاهلية' in title or 'أهلية' in title or 'شركة' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png' # أيقونة شركة
+        return 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png'
     
     # صورة افتراضية للوظائف الحكومية العامة
-    return 'https://cdn-icons-png.flaticon.com/512/8291/8291079.png' # أيقونة حكومة
+    return 'https://cdn-icons-png.flaticon.com/512/8291/8291079.png'
 
 def clean_html_content(html_content):
     soup = BeautifulSoup(html_content, "html.parser")
