@@ -79,32 +79,35 @@ def download_and_save_image(image_url):
         print(f"فشل تحميل الصورة ({image_url}): {e}")
     return None
 
-def get_logo_for_title(title):
+def get_logo_for_job(title, description):
+    combined_text = f"{title} {description}"
+    
     # البحث في القاموس أولاً عن اسم الوزارة أو المؤسسة
     for keyword, logo_url in LOGOS_DICTIONARY.items():
-        if keyword in title:
-            # نحاول تحميل شعار القاموس لكي يكون من رابطنا أيضاً (لتوحيد العملية وتجنب CORS)
-            # ولكن لتخفيف الضغط يمكن إرجاع الرابط المباشر، أو الأفضل تحميله.
+        if keyword in combined_text:
             saved_url = download_and_save_image(logo_url)
             if saved_url: return saved_url
-            return logo_url # الاحتياط في حال فشل التحميل
+            return logo_url 
             
     # محاولة جلب شعار من Google Custom Search API
     if GOOGLE_API_KEY and SEARCH_ENGINE_ID:
         try:
-            # استخراج اسم الجهة للبحث عن شعارها
             entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد']
             search_query = None
             
-            words = title.split()
+            # البحث عن اسم الشركة في النص المدمج (العنوان + التفاصيل)
+            words = combined_text.split()
             for i, word in enumerate(words):
                 if word in entity_keywords:
+                    # نأخذ الكلمة المفتاحية مع الكلمتين التي تليها كاسم للجهة
                     entity_name = ' '.join(words[i:i+3])
                     search_query = f"شعار {entity_name} العراق"
                     break
                     
+            # إذا لم يتم إيجاد اسم جهة محدد، نعتمد على كلمات العنوان الأولى
             if not search_query:
-                short_title = ' '.join(words[:4]) if len(words) >= 4 else title
+                title_words = title.split()
+                short_title = ' '.join(title_words[:4]) if len(title_words) >= 4 else title
                 search_query = f"شعار {short_title} العراق"
                 
             # استدعاء API لجوجل
@@ -121,7 +124,7 @@ def get_logo_for_title(title):
                 data = res.json()
                 if 'items' in data and len(data['items']) > 0:
                     item = data['items'][0]
-                    # نفضل الصورة المصغرة (Thumbnail) لأنها مستضافة في سيرفرات جوجل (تجنب الحظر)
+                    # نفضل الصورة المصغرة لتجنب الأحجام الكبيرة
                     image_url = item.get('image', {}).get('thumbnailLink') or item.get('link')
                     if image_url:
                         saved_url = download_and_save_image(image_url)
@@ -130,22 +133,7 @@ def get_logo_for_title(title):
         except Exception as e:
             print(f"فشل جلب الصورة من جوجل لـ {title}: {e}")
     
-    # إذا فشل جوجل أو لم يتم إعداد المفاتيح، نستخدم أيقونات افتراضية مميزة
-    if 'جامعة' in title or 'كلية' in title or 'معهد' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/8074/8074805.png'
-    if 'مستشفى' in title or 'صحة' in title or 'طبي' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/4320/4320337.png'
-    if 'مصرف' in title or 'بنك' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2830/2830284.png'
-    if 'مدرسة' in title or 'تدريس' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2436/2436855.png'
-    if 'مطار' in title or 'طيران' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/3163/3163155.png'
-        
-    # صورة افتراضية للوظائف الأهلية (قطاع خاص)
-    if 'الاهلية' in title or 'أهلية' in title or 'شركة' in title:
-        return 'https://cdn-icons-png.flaticon.com/512/2830/2830305.png'
-    # الصورة الافتراضية للتطبيق
+    # الصورة الافتراضية للتطبيق بناءً على طلب المستخدم في حالة عدم العثور على شعار
     return 'https://i.ibb.co/qM1b00XS/dfdfd2c9e13b.png'
 
 def clean_html_content(html_content):
@@ -221,7 +209,7 @@ def fetch_and_parse_jobs():
         # تنظيف المحتوى واستخراج اللوجو الذكي
         raw_description = entry.description
         clean_description = clean_html_content(raw_description)
-        logo_url = get_logo_for_title(title)
+        logo_url = get_logo_for_job(title, clean_description)
         
         job = {
             "id": str(uuid.uuid4())[:8],
