@@ -262,6 +262,10 @@ def fetch_telegram_jobs(existing_jobs=[]):
                 if match:
                     post_id = f"tg-{match.group(1)}"
                 
+                from fetch_jobs import get_logo_for_job
+                
+                logo_url = get_logo_for_job(title, clean_desc)
+
                 job = {
                     "id": post_id,
                     "title": title,
@@ -269,7 +273,7 @@ def fetch_telegram_jobs(existing_jobs=[]):
                     "description": clean_desc,
                     "pubDate": pub_date,
                     "category": category,
-                    "imageUrl": "https://cdn-icons-png.flaticon.com/512/2830/2830305.png" if sector == 'القطاع الخاص' else "https://cdn-icons-png.flaticon.com/512/8291/8291079.png"
+                    "imageUrl": logo_url
                 }
                 
                 new_jobs.append(job)
