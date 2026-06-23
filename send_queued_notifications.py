@@ -9,7 +9,11 @@ QUEUE_FILE_PATH = 'notifications_queue.json'
 
 def init_firebase():
     if not firebase_admin._apps:
-        cred = credentials.Certificate('../assets/service-account.json')
+        # Check if running on GitHub Actions (file in root)
+        if os.path.exists('service-account.json'):
+            cred = credentials.Certificate('service-account.json')
+        else:
+            cred = credentials.Certificate('../assets/service-account.json')
         firebase_admin.initialize_app(cred)
 
 def process_queue():
@@ -28,9 +32,9 @@ def process_queue():
         print("لا توجد إشعارات جديدة في الطابور.")
         return
 
-    print(f"تم العثور على {len(queue)} إشعار(ات) في الطابور. جاري الانتظار لمدة 5 دقائق لضمان تحديث الكاش...")
-    # الانتظار 5 دقائق لكي يتحدث كاش GitHub وتظهر الوظيفة للمستخدمين عند ضغطهم على الإشعار
-    time.sleep(300)
+    print(f"تم العثور على {len(queue)} إشعار(ات) في الطابور. جاري الانتظار لمدة 3 دقائق لضمان تحديث الكاش...")
+    # الانتظار 3 دقائق لكي يتحدث كاش GitHub وتظهر الوظيفة للمستخدمين عند ضغطهم على الإشعار
+    time.sleep(180)
 
     init_firebase()
     
