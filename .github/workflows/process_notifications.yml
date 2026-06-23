@@ -1,100 +1,47 @@
-import json
-import os
-import time
-import firebase_admin
-from firebase_admin import credentials, messaging
+name: Process Notification Queue
 
-QUEUE_FILE_PATH = 'notifications_queue.json'
+on:
+  push:
+    paths:
+      - 'notifications_queue.json'
+  workflow_dispatch:
 
-def init_firebase():
-    if not firebase_admin._apps:
-        # هنا الكود المحدث: يقرأ السر من سيرفر كيت هاب
-        if os.path.exists('service-account.json'):
-            cred = credentials.Certificate('service-account.json')
-        else:
-            cred = credentials.Certificate('../assets/service-account.json')
-        firebase_admin.initialize_app(cred)
+concurrency:
+  group: process_notifications
+  cancel-in-progress: true
 
-def process_queue():
-    if not os.path.exists(QUEUE_FILE_PATH):
-        print("لا يوجد ملف طابور إشعارات.")
-        return
+jobs:
+  process-notifications:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-    with open(QUEUE_FILE_PATH, 'r', encoding='utf-8') as f:
-        try:
-            queue = json.load(f)
-        except json.JSONDecodeError:
-            print("ملف الطابور فارغ أو تالف.")
-            return
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
 
-    if not queue:
-        print("لا توجد إشعارات جديدة في الطابور.")
-        return
+      - name: Install Dependencies
+        run: pip install firebase-admin
 
-    print(f"تم العثور على {len(queue)} إشعار(ات) في الطابور. جاري الانتظار لمدة 3 دقائق لضمان تحديث الكاش...")
-    # وقت الانتظار صار 3 دقائق فقط (180 ثانية)
-    time.sleep(180)
+      - name: Create Service Account File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
 
-    init_firebase()
-    
-    topic_map = {
-      'بغداد': 'baghdad', 'البصرة': 'basra', 'نينوى': 'nineveh', 'أربيل': 'erbil',
-      'النجف': 'najaf', 'ذي قار': 'dhi_qar', 'كركوك': 'kirkuk', 'الأنبار': 'anbar',
-      'ديالى': 'diyala', 'المثنى': 'muthanna', 'الديوانية': 'diwaniya', 'ميسان': 'maysan',
-      'واسط': 'wasit', 'صلاح الدين': 'saladin', 'دهوك': 'duhok', 'السليمانية': 'sulaymaniyah',
-      'بابل': 'babil', 'كربلاء': 'karbala',
-      'القطاع الحكومي العام': 'gov_sector', 'القطاع الخاص': 'private_sector'
-    }
-
-    for job in queue:
-        print(f"جاري معالجة إشعار الوظيفة: {job.get('title')}")
-        title = job.get('title', '')
-        sector = job.get('category', '')
+      - name: Run Notifications Script
+        run: python send_queued_notifications.py
         
-        province = ''
-        if '(' in title and ')' in title:
-            province = title.split('(')[1].split(')')[0].strip()
-
-        p_topic = topic_map.get(province)
-        s_topic = topic_map.get(sector)
-        
-        conditions = ["'all_users' in topics"]
-        if p_topic:
-            conditions.append(f"'topic_{p_topic}' in topics")
-        if s_topic:
-            conditions.append(f"'topic_{s_topic}' in topics")
-            
-        condition_str = " || ".join(conditions)
-        
-        try:
-            message = messaging.Message(
-                notification=messaging.Notification(
-                    title=f"وظيفة جديدة في {province if province else 'العراق'}",
-                    body=title
-                ),
-                data={'type': 'job'},
-                condition=condition_str,
-                android=messaging.AndroidConfig(
-                    priority='high',
-                    notification=messaging.AndroidNotification(
-                        sound='custom_tone',
-                        channel_id='iraq_jobs_alerts_channel'
-                    )
-                ),
-                apns=messaging.APNSConfig(
-                    payload=messaging.APNSPayload(
-                        aps=messaging.Aps(sound='default', content_available=True)
-                    )
-                )
-            )
-            response = messaging.send(message)
-            print(f"تم إرسال الإشعار بنجاح: {response}")
-        except Exception as e:
-            print(f"فشل في إرسال الإشعار: {e}")
-            
-    with open(QUEUE_FILE_PATH, 'w', encoding='utf-8') as f:
-        json.dump([], f)
-    print("تم تفريغ الطابور.")
-
-if __name__ == "__main__":
-    process_queue()
+      - name: Commit Emptied Queue
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main || true
+          git add notifications_queue.json
+          git commit -m "🤖 System: تم تفريغ طابور الإشعارات بعد إرسالها بنجاح" || exit 0
+          git push origin main
