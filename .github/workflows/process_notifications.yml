@@ -6,6 +6,10 @@ on:
       - 'notifications_queue.json'
   workflow_dispatch:
 
+concurrency:
+  group: process_notifications
+  cancel-in-progress: true
+
 jobs:
   process-notifications:
     runs-on: ubuntu-latest
@@ -23,6 +27,9 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install firebase-admin
+
+      - name: Create Service Account File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
 
       - name: Run Notifications Script
         run: |
