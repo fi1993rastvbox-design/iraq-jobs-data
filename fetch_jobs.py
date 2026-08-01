@@ -133,8 +133,8 @@ def get_logo_for_job(title, description):
         except Exception as e:
             print(f"فشل جلب الصورة من جوجل لـ {title}: {e}")
     
-    # الصورة الافتراضية للتطبيق بناءً على طلب المستخدم في حالة عدم العثور على شعار
-    return 'https://i.ibb.co/qM1b00XS/dfdfd2c9e13b.png'
+    # الصورة الافتراضية للتطبيق تم إزالتها واستبدالها برمجياً داخل التطبيق لتجنب مشاكل الروابط
+    return None
 
 def clean_html_content(html_content):
     soup = BeautifulSoup(html_content, "html.parser")
