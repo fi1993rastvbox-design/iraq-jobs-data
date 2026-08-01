@@ -238,14 +238,14 @@ def main():
         except Exception as e:
             print(f"تنبيه: فشل قراءة jobs.json: {e}")
             
-    # تحميل الوظائف المعلقة حالياً (إذا وجد الملف) لكي لا نحذفها
-    existing_pending_jobs = []
-    if os.path.exists('pending_jobs.json'):
+    # تحميل طابور الإشعارات الحالي (إذا وجد) لدمجه
+    existing_queue = []
+    if os.path.exists('notifications_queue.json'):
         try:
-            with open('pending_jobs.json', 'r', encoding='utf-8') as f:
-                existing_pending_jobs = json.load(f)
+            with open('notifications_queue.json', 'r', encoding='utf-8') as f:
+                existing_queue = json.load(f)
         except Exception as e:
-            print(f"تنبيه: فشل قراءة pending_jobs.json: {e}")
+            print(f"تنبيه: فشل قراءة notifications_queue.json: {e}")
 
     # أولاً جلب وظائف الموقع (RSS)
     rss_jobs = fetch_and_parse_jobs()
@@ -256,29 +256,33 @@ def main():
     # دمج الوظائف الجديدة المسحوبة
     scraped_jobs = rss_jobs + telegram_jobs
     
-    # تصفية الوظائف الجديدة: نقبل فقط الوظائف التي ليست مكررة في jobs.json وليست مكررة في pending_jobs.json
+    # تصفية الوظائف الجديدة: نقبل فقط الوظائف التي ليست مكررة في jobs.json
     new_filtered_jobs = []
     for job in scraped_jobs:
-        # فحص إذا كانت مكررة في الوظائف المنشورة أو في المعلقة حالياً
+        # فحص إذا كانت مكررة في الوظائف المنشورة حالياً
         if not is_duplicate(job['title'], job['description'], existing_active_jobs) and \
-           not is_duplicate(job['title'], job['description'], existing_pending_jobs) and \
            not is_duplicate(job['title'], job['description'], new_filtered_jobs):
             new_filtered_jobs.append(job)
 
-    # دمج الوظائف المعلقة القديمة مع الوظائف الجديدة المفلترة
-    updated_pending_jobs = existing_pending_jobs + new_filtered_jobs
+    # دمج الوظائف القديمة مع الوظائف الجديدة المفلترة (الجديدة في البداية)
+    updated_jobs = new_filtered_jobs + existing_active_jobs
     
-    # ترتيب الوظائف المعلقة تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
-    updated_pending_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
+    # ترتيب الوظائف تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
+    updated_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
     
-    # حفظ الملف كـ JSON في pending_jobs.json
-    output_file = 'pending_jobs.json'
-    with open(output_file, 'w', encoding='utf-8') as f:
-        json.dump(updated_pending_jobs, f, ensure_ascii=False, indent=4)
+    # حفظ الملف كـ JSON في jobs.json
+    with open('jobs.json', 'w', encoding='utf-8') as f:
+        json.dump(updated_jobs, f, ensure_ascii=False, indent=4)
+        
+    # إضافة الوظائف الجديدة إلى طابور الإشعارات
+    if new_filtered_jobs:
+        updated_queue = existing_queue + new_filtered_jobs
+        with open('notifications_queue.json', 'w', encoding='utf-8') as f:
+            json.dump(updated_queue, f, ensure_ascii=False, indent=4)
         
     print(f"تم بنجاح جلب وتنظيف {len(rss_jobs)} من الموقع و {len(telegram_jobs)} من التليجرام.")
-    print(f"الوظائف الجديدة غير المكررة المضافة للمعلقات: {len(new_filtered_jobs)}")
-    print(f"العدد الكلي للوظائف المعلقة المحفوظة في {output_file} هو: {len(updated_pending_jobs)}")
+    print(f"الوظائف الجديدة غير المكررة المضافة والنشر التلقائي: {len(new_filtered_jobs)}")
+    print(f"العدد الكلي للوظائف المنشورة في jobs.json هو: {len(updated_jobs)}")
 
 if __name__ == "__main__":
     main()
