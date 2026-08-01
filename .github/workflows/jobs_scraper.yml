@@ -35,6 +35,6 @@ jobs:
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add pending_jobs.json logos/
-          git commit -m "🤖 Scraper: تحديث الوظائف المعلقة وشعارات الشركات" || exit 0
+          git add jobs.json notifications_queue.json logos/
+          git commit -m "🤖 Scraper: نشر الوظائف الجديدة وإضافتها لطابور الإشعارات" || exit 0
           git push origin main
