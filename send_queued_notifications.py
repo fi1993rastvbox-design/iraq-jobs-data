@@ -44,7 +44,8 @@ def process_queue():
       'ديالى': 'diyala', 'المثنى': 'muthanna', 'الديوانية': 'diwaniya', 'ميسان': 'maysan',
       'واسط': 'wasit', 'صلاح الدين': 'saladin', 'دهوك': 'duhok', 'السليمانية': 'sulaymaniyah',
       'بابل': 'babil', 'كربلاء': 'karbala',
-      'القطاع الحكومي العام': 'gov_sector', 'القطاع الخاص': 'private_sector'
+      'القطاع الحكومي العام': 'gov_sector', 'القطاع الخاص': 'private_sector',
+      'الاخبار': 'news'
     }
 
     for job in queue:
@@ -58,10 +59,13 @@ def process_queue():
         title = job.get('title', '')
         sector = job.get('category', '')
         
-        # استخراج المحافظة من العنوان (عادة تكون بين أقواس)
+        # استخراج المحافظة من العنوان (أقواس مربعة أو هلالية)
         province = ''
-        if '(' in title and ')' in title:
+        if '[' in title and ']' in title:
+            province = title.split('[')[1].split(']')[0].strip()
+        elif '(' in title and ')' in title:
             province = title.split('(')[1].split(')')[0].strip()
+
 
         p_topic = topic_map.get(province)
         s_topic = topic_map.get(sector)

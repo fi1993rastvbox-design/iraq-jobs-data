@@ -87,12 +87,29 @@ def determine_sector(text):
     return 'القطاع الخاص'
 
 def extract_location(text, channel_name, sector):
-    # محاولة إيجاد اسم المحافظة في النص
+    # 1. إزالة العبارات المضللة التي تحتوي على أسماء محافظات ولكنها لا تعبر عن الموقع
+    text_for_search = text.replace('كراج بغداد', '').replace('جامعة بغداد', '').replace('مطار بغداد', '')
+    
+    # 2. البحث عن المحافظة المسبوقة بكلمات تدل على الموقع الفعلي أولاً (أولوية قصوى)
+    location_keywords = ['في محافظة ', 'محافظة ', 'في مدينة ', 'مدينة ', 'في ', 'فرع ', 'العنوان: ', 'العنوان ', 'مقر العمل ']
     for province in PROVINCES:
-        if province in text:
-            return province
+        for kw in location_keywords:
+            if kw + province in text_for_search:
+                return province
+
+    # 3. إذا لم نجد الكلمات الدلالية، نبحث عن أول محافظة ذُكرت في النص (وليس حسب ترتيب القائمة)
+    found_provinces = []
+    for province in PROVINCES:
+        idx = text_for_search.find(province)
+        if idx != -1:
+            found_provinces.append((idx, province))
             
-    # تطبيق قاعدة القنوات المخصصة لبغداد
+    if found_provinces:
+        # ترتيب المحافظات حسب ظهورها الأول في النص (الرقم الأقل يعني ظهرت أولاً)
+        found_provinces.sort(key=lambda x: x[0])
+        return found_provinces[0][1]
+            
+    # 4. تطبيق قاعدة القنوات المخصصة لبغداد إذا لم يُذكر أي مكان
     if channel_name in BAGHDAD_SPECIFIC_CHANNELS and sector == 'القطاع الخاص':
         return 'بغداد'
         
@@ -102,15 +119,16 @@ def clean_telegram_text(text):
     if not text:
         return ""
     
-    # 1. إزالة أي روابط سوشيال ميديا (تليجرام، فيسبوك، انستغرام، يوتيوب، إلخ)
-    text = re.sub(r'https?://\S+', '', text)
-    text = re.sub(r'www\.\S+', '', text)
-    text = re.sub(r'\S+\.com\S*', '', text)
-    text = re.sub(r't\.me/\S+', '', text)
-    text = re.sub(r'telegram\.me/\S+', '', text)
+    # 1. إزالة روابط قنوات التليجرام والسوشيال ميديا فقط (مع الحفاظ على روابط التقديم والإيميلات)
+    social_domains = [
+        r't\.me', r'telegram\.me', r'facebook\.com', r'fb\.me', r'instagram\.com', 
+        r'instagr\.am', r'youtube\.com', r'youtu\.be', r'tiktok\.com', r'snapchat\.com'
+    ]
+    for domain in social_domains:
+        text = re.sub(r'(?:https?://)?(?:www\.)?' + domain + r'\S*', '', text, flags=re.IGNORECASE)
     
-    # 2. إزالة المعرفات التي تبدأ بـ @ (مثل @baghdadjobss)
-    text = re.sub(r'@\w+', '', text)
+    # 2. إزالة المعرفات التي تبدأ بـ @ (مثل @baghdadjobss) ولكن ليس الإيميلات!
+    text = re.sub(r'(?<=^|\s)@\w+', '', text)
     
     # 3. إزالة العبارات الترويجية والطلب بالاشتراك باللغة العربية
     promo_phrases = [
