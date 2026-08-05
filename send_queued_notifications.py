@@ -70,10 +70,14 @@ def process_queue():
         p_topic = topic_map.get(province)
         s_topic = topic_map.get(sector)
         
-        # تكوين الشرط: نرسل دائماً لـ all_users، وإذا توفرت المحافظة/القطاع نرسل للمشتركين بها
-        conditions = ["'all_users' in topics"]
+        # تكوين الشرط: نرسل الإشعار فقط للمشتركين في المحافظة أو القطاع الخاص بالوظيفة
+        conditions = []
         if p_topic:
             conditions.append(f"'topic_{p_topic}' in topics")
+        else:
+            # إذا لم تكن هناك محافظة محددة (لكل العراق)، نرسله للمشتركين في قناة كل العراق
+            conditions.append("'topic_iraq' in topics")
+            
         if s_topic:
             conditions.append(f"'topic_{s_topic}' in topics")
             
