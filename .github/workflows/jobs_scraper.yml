@@ -1,16 +1,15 @@
-name: Iraq Jobs Scraper
+name: Iraq Jobs Scraper & Notifications
 
 on:
   schedule:
-    # يعمل كل 4 ساعات تلقائياً
     - cron: '0 */4 * * *'
-  workflow_dispatch: # زر للتشغيل اليدوي وقتما تشاء
+  workflow_dispatch:
 
 jobs:
-  scrape-and-push:
+  scrape-and-notify:
     runs-on: ubuntu-latest
     permissions:
-      contents: write # صلاحية الكتابة للمستودع ودفع التغييرات
+      contents: write
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -23,6 +22,10 @@ jobs:
       - name: Install Dependencies
         run: |
           pip install -r requirements.txt
+          pip install firebase-admin
+
+      - name: Create Service Account File
+        run: echo '${{ secrets.FIREBASE_SERVICE_ACCOUNT }}' > service-account.json
 
       - name: Run Scraper Script
         env:
@@ -31,10 +34,14 @@ jobs:
         run: |
           python fetch_jobs.py
 
+      - name: Run Notifications Script
+        run: |
+          python send_queued_notifications.py
+
       - name: Commit and Push changes
         run: |
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add jobs.json notifications_queue.json logos/
-          git commit -m "🤖 Scraper: نشر الوظائف الجديدة وإضافتها لطابور الإشعارات" || exit 0
+          git commit -m "🤖 System: جلب الوظائف وإرسال الإشعارات" || exit 0
           git push origin main
