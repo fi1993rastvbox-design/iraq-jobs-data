@@ -7,10 +7,7 @@ import uuid
 from datetime import datetime
 import time
 import requests
-
-# Get Google credentials from environment variables (GitHub Secrets)
-GOOGLE_API_KEY = os.environ.get("GOOGLE_API_KEY", "")
-SEARCH_ENGINE_ID = os.environ.get("SEARCH_ENGINE_ID", "")
+from duckduckgo_search import DDGS
 
 # رابط خلاصة RSS لموقع تعيينات العراق
 RSS_URL = 'https://www.t9iq.com/feeds/posts/default?alt=rss'
@@ -42,7 +39,23 @@ LOGOS_DICTIONARY = {
     'الجامعة المستنصرية': 'https://upload.wikimedia.org/wikipedia/ar/thumb/4/44/Mustansiriyah_University_logo.png/400px-Mustansiriyah_University_logo.png',
     'الجامعة التكنولوجية': 'https://upload.wikimedia.org/wikipedia/ar/thumb/2/23/University_of_Technology%2C_Iraq_logo.png/400px-University_of_Technology%2C_Iraq_logo.png',
     'جامعة البصرة': 'https://upload.wikimedia.org/wikipedia/ar/thumb/1/1a/University_of_Basrah_logo.png/400px-University_of_Basrah_logo.png',
-    'جامعة الموصل': 'https://upload.wikimedia.org/wikipedia/ar/thumb/2/25/University_of_Mosul_logo.png/400px-University_of_Mosul_logo.png'
+    'جامعة الموصل': 'https://upload.wikimedia.org/wikipedia/ar/thumb/2/25/University_of_Mosul_logo.png/400px-University_of_Mosul_logo.png',
+    'شركة زين': 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d4/Zain_Group_logo.svg/200px-Zain_Group_logo.svg.png',
+    'اسيا سيل': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Asiacell_Logo.svg/200px-Asiacell_Logo.svg.png',
+    'آسيا سيل': 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e3/Asiacell_Logo.svg/200px-Asiacell_Logo.svg.png',
+    'كورك': 'https://upload.wikimedia.org/wikipedia/ar/thumb/9/91/Korek_Telecom_logo.png/200px-Korek_Telecom_logo.png',
+    'مصرف الرافدين': 'https://upload.wikimedia.org/wikipedia/ar/8/87/Rafidain_Bank_Logo.png',
+    'مصرف الرشيد': 'https://rasheedbank.gov.iq/wp-content/uploads/2021/08/logo.png',
+    'المصرف العراقي للتجارة': 'https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Trade_Bank_of_Iraq_logo.png/220px-Trade_Bank_of_Iraq_logo.png',
+    'كي كارد': 'https://upload.wikimedia.org/wikipedia/ar/thumb/6/67/Qi_Card_logo.svg/200px-Qi_Card_logo.svg.png',
+    'جامعة الفراهيدي': 'https://upload.wikimedia.org/wikipedia/ar/4/47/Al-Farahidi_University_logo.png',
+    'كلية التراث': 'https://upload.wikimedia.org/wikipedia/ar/b/ba/Al-Turath_University_College_logo.png',
+    'جامعة المستقبل': 'https://upload.wikimedia.org/wikipedia/ar/a/a2/Al-Mustaqbal_University_College_logo.png',
+    'جامعة الكفيل': 'https://upload.wikimedia.org/wikipedia/ar/5/52/Al-Kafeel_University_logo.png',
+    'جامعة العميد': 'https://upload.wikimedia.org/wikipedia/ar/7/7b/Al-Ameed_University_logo.png',
+    'هيئة النزاهة': 'https://upload.wikimedia.org/wikipedia/ar/thumb/4/42/Commission_of_Integrity_%28Iraq%29_logo.png/200px-Commission_of_Integrity_%28Iraq%29_logo.png',
+    'الوقف الشيعي': 'https://upload.wikimedia.org/wikipedia/ar/thumb/f/fd/Shiite_Endowment_Bureau_logo.png/200px-Shiite_Endowment_Bureau_logo.png',
+    'الوقف السني': 'https://upload.wikimedia.org/wikipedia/ar/thumb/e/e6/Sunni_Endowment_Bureau_logo.png/200px-Sunni_Endowment_Bureau_logo.png'
 }
 
 # الجمل الإعلانية التي يجب مسحها تلقائياً من النص
@@ -98,49 +111,37 @@ def get_logo_for_job(title, description):
             if saved_url: return saved_url
             return logo_url 
             
-    # محاولة جلب شعار من Google Custom Search API
-    if GOOGLE_API_KEY and SEARCH_ENGINE_ID:
-        try:
-            entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد', 'مركز', 'مؤسسة', 'مجمع', 'صيدلية', 'مختبر', 'مدرسة']
-            search_query = None
-            
-            # البحث عن اسم الشركة في النص المدمج (العنوان + التفاصيل)
-            words = combined_text.split()
-            for i, word in enumerate(words):
-                if word in entity_keywords:
-                    # نأخذ الكلمة المفتاحية مع الكلمتين التي تليها كاسم للجهة
-                    entity_name = ' '.join(words[i:i+3])
-                    search_query = f"شعار {entity_name} العراق"
-                    break
-                    
-            # إذا لم يتم إيجاد اسم جهة محدد، نعتمد على كلمات العنوان الأولى
-            if not search_query:
-                title_words = title.split()
-                short_title = ' '.join(title_words[:4]) if len(title_words) >= 4 else title
-                search_query = f"شعار {short_title} العراق"
+    # محاولة جلب شعار عبر محرك بحث DuckDuckGo المجاني
+    try:
+        entity_keywords = ['وزارة', 'جامعة', 'كلية', 'شركة', 'دائرة', 'مستشفى', 'مديرية', 'مصرف', 'هيئة', 'نقابة', 'معهد', 'مركز', 'مؤسسة', 'مجمع', 'صيدلية', 'مختبر', 'مدرسة']
+        search_query = None
+        
+        # البحث عن اسم الشركة في النص المدمج (العنوان + التفاصيل)
+        words = combined_text.split()
+        for i, word in enumerate(words):
+            if word in entity_keywords:
+                # نأخذ الكلمة المفتاحية مع الكلمتين التي تليها كاسم للجهة
+                entity_name = ' '.join(words[i:i+3])
+                search_query = f"شعار {entity_name} العراق"
+                break
                 
-            # استدعاء API لجوجل
-            url = "https://www.googleapis.com/customsearch/v1"
-            params = {
-                'q': search_query,
-                'cx': SEARCH_ENGINE_ID,
-                'key': GOOGLE_API_KEY,
-                'searchType': 'image',
-                'num': 1
-            }
-            res = requests.get(url, params=params, timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                if 'items' in data and len(data['items']) > 0:
-                    item = data['items'][0]
-                    # نفضل الصورة المصغرة لتجنب الأحجام الكبيرة
-                    image_url = item.get('image', {}).get('thumbnailLink') or item.get('link')
-                    if image_url:
-                        saved_url = download_and_save_image(image_url)
-                        if saved_url:
-                            return saved_url
-        except Exception as e:
-            print(f"فشل جلب الصورة من جوجل لـ {title}: {e}")
+        # إذا لم يتم إيجاد اسم جهة محدد، نعتمد على كلمات العنوان الأولى
+        if not search_query:
+            title_words = title.split()
+            short_title = ' '.join(title_words[:4]) if len(title_words) >= 4 else title
+            search_query = f"شعار {short_title} العراق"
+            
+        # استخدام DuckDuckGo للبحث عن الصورة
+        with DDGS() as ddgs:
+            results = ddgs.images(search_query, max_results=1)
+            for r in results:
+                image_url = r.get('image')
+                if image_url:
+                    saved_url = download_and_save_image(image_url)
+                    if saved_url:
+                        return saved_url
+    except Exception as e:
+        print(f"فشل جلب الصورة من DuckDuckGo لـ {title}: {e}")
     
     # الصورة الافتراضية للتطبيق تم إزالتها واستبدالها برمجياً داخل التطبيق لتجنب مشاكل الروابط
     return None

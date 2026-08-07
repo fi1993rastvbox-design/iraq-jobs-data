@@ -128,7 +128,7 @@ def clean_telegram_text(text):
         text = re.sub(r'(?:https?://)?(?:www\.)?' + domain + r'\S*', '', text, flags=re.IGNORECASE)
     
     # 2. إزالة المعرفات التي تبدأ بـ @ (مثل @baghdadjobss) ولكن ليس الإيميلات!
-    text = re.sub(r'(?<=^|\s)@\w+', '', text)
+    text = re.sub(r'(?<!\S)@\w+', '', text)
     
     # 3. إزالة العبارات الترويجية والطلب بالاشتراك باللغة العربية
     promo_phrases = [
