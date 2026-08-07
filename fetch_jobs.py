@@ -234,6 +234,18 @@ def fetch_and_parse_jobs():
         
     return jobs_list
 
+def filter_old_jobs(jobs, max_days=180):
+    filtered = []
+    now = datetime.now()
+    for job in jobs:
+        try:
+            job_date = datetime.strptime(job['pubDate'].split(' ')[0], "%Y-%m-%d")
+            if (now - job_date).days <= max_days:
+                filtered.append(job)
+        except Exception:
+            filtered.append(job)
+    return filtered
+
 def main():
     import os
     from telegram_scraper import fetch_telegram_jobs, is_duplicate
@@ -275,6 +287,9 @@ def main():
 
     # دمج الوظائف القديمة مع الوظائف الجديدة المفلترة (الجديدة في البداية)
     updated_jobs = new_filtered_jobs + existing_active_jobs
+    
+    # تنظيف الوظائف التي مر عليها أكثر من 180 يوماً
+    updated_jobs = filter_old_jobs(updated_jobs, 180)
     
     # ترتيب الوظائف تنازلياً حسب التاريخ لضمان ظهور الأحدث في البداية
     updated_jobs.sort(key=lambda x: x['pubDate'], reverse=True)
