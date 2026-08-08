@@ -85,22 +85,18 @@ def process_queue():
         
         try:
             message = messaging.Message(
-                notification=messaging.Notification(
-                    title=f"وظيفة جديدة في {province if province else 'العراق'}",
-                    body=title
-                ),
-                data={'type': 'job'},
+                data={
+                    'type': 'job',
+                    'title': f"وظيفة جديدة في {province if province else 'العراق'}",
+                    'body': title
+                },
                 condition=condition_str,
                 android=messaging.AndroidConfig(
                     priority='high',
-                    notification=messaging.AndroidNotification(
-                        sound='custom_tone',
-                        channel_id='iraq_jobs_alerts_channel'
-                    )
                 ),
                 apns=messaging.APNSConfig(
                     payload=messaging.APNSPayload(
-                        aps=messaging.Aps(sound='default', content_available=True)
+                        aps=messaging.Aps(content_available=True)
                     )
                 )
             )
