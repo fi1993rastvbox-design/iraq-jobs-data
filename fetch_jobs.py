@@ -132,6 +132,7 @@ def get_logo_for_job(title, description):
             search_query = f"شعار {short_title} العراق"
             
         # استخدام DuckDuckGo للبحث عن الصورة
+        time.sleep(1.5)
         with DDGS() as ddgs:
             results = ddgs.images(search_query, max_results=1)
             for r in results:
