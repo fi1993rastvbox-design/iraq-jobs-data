@@ -7,7 +7,7 @@ import uuid
 from datetime import datetime
 import time
 import requests
-from duckduckgo_search import DDGS
+
 
 # رابط خلاصة RSS لموقع تعيينات العراق
 RSS_URL = 'https://www.t9iq.com/feeds/posts/default?alt=rss'
@@ -131,18 +131,35 @@ def get_logo_for_job(title, description):
             short_title = ' '.join(title_words[:4]) if len(title_words) >= 4 else title
             search_query = f"شعار {short_title} العراق"
             
-        # استخدام DuckDuckGo للبحث عن الصورة
-        time.sleep(1.5)
-        with DDGS() as ddgs:
-            results = ddgs.images(search_query, max_results=1)
-            for r in results:
-                image_url = r.get('image')
-                if image_url:
+        # استخدام Google Custom Search للبحث عن الصورة
+        time.sleep(1.0)
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        cx = os.environ.get("SEARCH_ENGINE_ID")
+        
+        if api_key and cx:
+            url = "https://www.googleapis.com/customsearch/v1"
+            params = {
+                "q": search_query,
+                "cx": cx,
+                "key": api_key,
+                "searchType": "image",
+                "num": 1,
+            }
+            
+            response = requests.get(url, params=params, timeout=10)
+            if response.status_code == 200:
+                results = response.json()
+                if "items" in results and len(results["items"]) > 0:
+                    image_url = results["items"][0]["link"]
                     saved_url = download_and_save_image(image_url)
                     if saved_url:
                         return saved_url
+            else:
+                print(f"Google API Error: {response.status_code} - {response.text}")
+        else:
+            print("مفاتيح Google API غير متوفرة في البيئة.")
     except Exception as e:
-        print(f"فشل جلب الصورة من DuckDuckGo لـ {title}: {e}")
+        print(f"فشل جلب الصورة من Google لـ {title}: {e}")
     
     # الصورة الافتراضية للتطبيق تم إزالتها واستبدالها برمجياً داخل التطبيق لتجنب مشاكل الروابط
     return None
