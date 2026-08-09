@@ -81,7 +81,7 @@ def process_queue():
         if s_topic:
             conditions.append(f"'topic_{s_topic}' in topics")
             
-        condition_str = " || ".join(conditions)
+        condition_str = " && ".join(conditions)
         
         try:
             message = messaging.Message(
