@@ -83,7 +83,10 @@ SPAM_PHRASES = [
     "اثناء اوقات الدوام الرسمي",
     "المكتب الرسمي ل موقع تعيينات العراق",
     "المكتب الرسمي لموقع تعيينات العراق",
-    "مكتب اليمان للتقديم"
+    "مكتب اليمان للتقديم",
+    "#علي_احمد_الجنابي",
+    "علي احمد الجنابي",
+    "علي_احمد_الجنابي"
 ]
 
 def download_and_save_image(image_url):
@@ -172,13 +175,13 @@ def clean_html_content(html_content):
         text_a = a.get_text()
         href = a.get('href', '')
         
-        # الكشف عن روابط السوشيال ميديا والإعلانات من خلال النص أو الرابط
-        is_social_text = any(word in text_a for word in ['تليكرام', 'واتساب', 'فايبر', 'انستغرام', 'فيس بوك', 'قناتنا', 'يوزر', 'تابعنا', 'الرئيسية'])
-        is_social_url = any(domain in href.lower() for domain in ['facebook.com', 'instagram.com', 't.me', 'tiktok.com', 'linkedin.com', 'twitter.com', 'youtube.com', 'wa.me', 'whatsapp.com', 'viber.com', 'bit.ly'])
-        is_image_link = any(img_ext in href.lower() for img_ext in ['.jpg', '.png', '.jpeg', '.gif', 'blogger.googleusercontent.com/img/'])
+        # الكشف عن روابط السوشيال ميديا الإعلانية فقط وتجنب مسح روابط التقديم للشركات
+        is_promo_text = any(word in text_a for word in ['قناتنا', 'تابعنا', 'الرئيسية', 'اشترك', 'يوزر التليكرام للجهات'])
+        is_promo_url = any(domain in href.lower() for domain in ['youtube.com', 'tiktok.com', 'snapchat.com'])
         is_main_page = href.strip('/') in ['https://www.t9iq.com', 'http://www.t9iq.com', 'https://t9iq.com', 'http://t9iq.com']
         
-        if is_social_text or is_social_url or is_image_link or is_main_page or not href:
+        # تجنب حذف الروابط الخاصة بالتقديم (t.me, wa.me, viber, forms, etc.)
+        if is_promo_text or is_promo_url or is_main_page or not href:
             a.decompose()
         else:
             link_text = text_a.strip() if text_a.strip() else "رابط"
@@ -195,7 +198,19 @@ def clean_html_content(html_content):
     # استخراج النص الصافي
     text = soup.get_text(separator="\n").strip()
     
-    # تنظيف الكلمات الإعلانية
+    # حذف الإعلانات التي تأتي في نهاية المنشور بالكامل (مثل إعلانات مكاتب التقديم)
+    footer_spams = [
+        'مكتب اليمان', 'المكتب الرسمي ل موقع', 'المكتب الرسمي لموقع', 
+        'إدارة موقع تعيينات', 'لتجنب الاخطاء ولضمان التقديم', 
+        'مراجعة المكتب الرسمي', 'المنصات الرسمية الخاصة بمكتب', 
+        'الاتصال بالمكتب على الارقام', 'الممثل الوحيد'
+    ]
+    for footer_spam in footer_spams:
+        idx = text.find(footer_spam)
+        if idx != -1:
+            text = text[:idx] # حذف كل النص الذي يأتي بعد الإعلان
+            
+    # تنظيف الكلمات الإعلانية العادية في بقية النص
     for spam in SPAM_PHRASES:
         text = re.sub(rf"{spam}.*", "", text, flags=re.IGNORECASE)
         text = text.replace(spam, "")
@@ -234,6 +249,12 @@ def fetch_and_parse_jobs():
             
         category = entry.category if 'category' in entry else "الكل"
         
+        # تصحيح القسم للأخبار العامة مثل قرعة الحج التي لا تعتبر وظائف
+        job_keywords = ['مطلوب', 'تعيين', 'وظائف', 'توظيف', 'فرصة عمل', 'شواغر', 'يعلن', 'بحاجة']
+        is_job = any(kw in title for kw in job_keywords)
+        if any(word in title for word in ['حج', 'عمرة', 'الحج', 'العمرة']) and not is_job:
+            category = 'أخبار'
+            
         # تنظيف المحتوى واستخراج اللوجو الذكي
         raw_description = entry.description
         clean_description = clean_html_content(raw_description)

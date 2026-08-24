@@ -119,18 +119,17 @@ def clean_telegram_text(text):
     if not text:
         return ""
     
-    # 1. إزالة روابط قنوات التليجرام والسوشيال ميديا فقط (مع الحفاظ على روابط التقديم والإيميلات)
-    social_domains = [
-        r't\.me', r'telegram\.me', r'facebook\.com', r'fb\.me', r'instagram\.com', 
-        r'instagr\.am', r'youtube\.com', r'youtu\.be', r'tiktok\.com', r'snapchat\.com'
+    # 1. إزالة روابط قنوات التليجرام الخاصة بالتوظيف فقط لتجنب مسح روابط التقديم للشركات
+    spam_channels = [
+        r'muhannad_job', r'iraq1jobs', r'mahdi1992lawer', r'engahmad88', 
+        r'biomedicaljobs96', r'baghdadjobss', r'medical_field', r't9iq'
     ]
-    for domain in social_domains:
-        text = re.sub(r'(?:https?://)?(?:www\.)?' + domain + r'\S*', '', text, flags=re.IGNORECASE)
+    for channel in spam_channels:
+        text = re.sub(r'(?:https?://)?(?:www\.)?(?:t\.me|telegram\.me)/' + channel + r'\S*', '', text, flags=re.IGNORECASE)
+        # إزالة المعرف الخاص بالقناة (مثل @baghdadjobss)
+        text = re.sub(r'@' + channel + r'\b', '', text, flags=re.IGNORECASE)
     
-    # 2. إزالة المعرفات التي تبدأ بـ @ (مثل @baghdadjobss) ولكن ليس الإيميلات!
-    text = re.sub(r'(?<!\S)@\w+', '', text)
-    
-    # 3. إزالة العبارات الترويجية والطلب بالاشتراك باللغة العربية
+    # 3. إزالة العبارات الترويجية والطلب بالاشتراك باللغة العربية وتواقيع الناشرين المزعجة
     promo_phrases = [
         r'قناتنا في التليكرام', r'قناتنا في التليجرام', r'قناتنا على التليكرام',
         r'تابعنا على', r'تابعونا على', r'للمزيد انضم إلينا', r'انضم لقناتنا',
@@ -138,7 +137,8 @@ def clean_telegram_text(text):
         r'الرقم الوتساب الخاص بنشر الوظائف', r'الرقم الواتساب الخاص بنشر الوظائف',
         r'موقعنا الرسمي', r'صفحتنا على', r'على الفيس بوك', r'على الانستغرام',
         r'على الانستكرام', r'تابعونا', r'اشتركوا', r'للنشر والاعلان',
-        r'انستغرام', r'فيس بوك', r'انستكرام', r'تيك توك', r'سناب شات'
+        r'انستغرام', r'فيس بوك', r'انستكرام', r'تيك توك', r'سناب شات',
+        r'#علي_احمد_الجنابي', r'علي احمد الجنابي', r'علي_احمد_الجنابي'
     ]
     for promo in promo_phrases:
         text = re.sub(promo + r'.*', '', text, flags=re.IGNORECASE)
