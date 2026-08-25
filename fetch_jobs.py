@@ -72,7 +72,6 @@ SPAM_PHRASES = [
     "لينكد إن",
     "يوزر التليكرام للجهات الراغبة بالنشر",
     "موقعنا الرسمي",
-    "اضغط هنا",
     "إدارة موقع تعيينات العراق",
     "مع تمنياتنا بالتوفيق للجميع",
     "مكتب اليمان",
@@ -172,26 +171,45 @@ def clean_html_content(html_content):
     
     # معالجة الروابط
     for a in soup.find_all('a'):
-        text_a = a.get_text()
-        href = a.get('href', '')
+        text_a = a.get_text().strip()
+        href = a.get('href', '').strip()
         
-        # الكشف عن روابط السوشيال ميديا الإعلانية فقط وتجنب مسح روابط التقديم للشركات
-        is_promo_text = any(word in text_a for word in ['قناتنا', 'تابعنا', 'الرئيسية', 'اشترك', 'يوزر التليكرام للجهات'])
-        is_promo_url = any(domain in href.lower() for domain in ['youtube.com', 'tiktok.com', 'snapchat.com'])
-        is_main_page = href.strip('/') in ['https://www.t9iq.com', 'http://www.t9iq.com', 'https://t9iq.com', 'http://t9iq.com']
+        # 1. فحص السياق: إذا كان الرابط داخل فقرة تحتوي كلمات ترويجية، نمسح الرابط
+        parent_text = a.parent.get_text() if a.parent else text_a
+        is_promo_context = any(word in parent_text for word in ['قناتنا', 'تابعنا', 'الرئيسية', 'اشترك', 'يوزر التليكرام للجهات', 'انضم'])
         
-        # تجنب حذف الروابط الخاصة بالتقديم (t.me, wa.me, viber, forms, etc.)
-        if is_promo_text or is_promo_url or is_main_page or not href:
+        # 2. فحص النطاق (Domain)
+        href_lower = href.lower()
+        is_spam_domain = any(domain in href_lower for domain in [
+            'youtube.com', 'tiktok.com', 'snapchat.com', 'instagram.com', 
+            'facebook.com', 'whatsapp.com/channel', 'invite.viber.com', 
+            't.me/t3iniq', 't.me/iraq1jobs', 't.me/t9iqad', 'twitter.com', 'pinterest.com'
+        ])
+        
+        # 3. الروابط الجانبية (روابط داخلية تروج لمقالات أخرى في الموقع)
+        # إذا كان الرابط يحتوي على t9iq.com أو يبدأ بـ / (مسار داخلي) فهو غالباً إعلان داخلي (الاستثناء لروابط بحث جوجل إن وجدت)
+        is_internal_link = ('t9iq.com' in href_lower or href.startswith('/')) and 'google' not in href_lower
+        
+        # تجنب حذف الروابط الخاصة بالتقديم وحذف المزعجة
+        if is_promo_context or is_spam_domain or is_internal_link or not href or href == 'javascript:void(0);':
             a.decompose()
         else:
-            link_text = text_a.strip() if text_a.strip() else "رابط"
-            a.replace_with(f" {link_text} [الرابط: {href}] ")
+            # التسمية الذكية للروابط
+            link_name = text_a if text_a else "رابط التقديم"
+            if 'forms.gle' in href_lower or 'docs.google' in href_lower:
+                link_name = "استمارة التقديم (Google Forms)"
+            elif 'wa.me' in href_lower or 'api.whatsapp' in href_lower:
+                link_name = "تواصل للتقديم عبر الواتساب"
+            elif text_a in ['اضغط هنا', 'بالضغط هنا', 'رابط', 'الرابط']:
+                link_name = "رابط التقديم / التفاصيل"
                 
-    # معالجة النماذج المضمنة (iframes) مثل نماذج جوجل
+            a.replace_with(f" {link_name} [الرابط: {href}] ")
+                
+    # معالجة النماذج المضمنة (iframes) لتجنب تحويل إعلانات الفيديو أو البنرات إلى استمارات
     for iframe in soup.find_all('iframe'):
-        src = iframe.get('src', '')
-        if src and ('docs.google.com/forms' in src or 'form' in src.lower()):
-            iframe.replace_with(f" استمارة التقديم (نموذج مضمن) \n [الرابط: {src}] \n")
+        src = iframe.get('src', '').lower()
+        if src and any(domain in src for domain in ['docs.google.com/forms', 'form', 'typeform', 'wufoo', 'jotform', 'survey']):
+            iframe.replace_with(f" استمارة التقديم المضمنة \n [الرابط: {src}] \n")
         else:
             iframe.decompose()
             
